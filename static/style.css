@@ -1,0 +1,84 @@
+/* style.css */
+
+body, html {
+    background-color: #f8f9fa;
+}
+
+.navbar {
+  position: fixed;
+  top: 0; 
+  width: 100%; 
+  z-index: 1000; 
+  background-color: white;
+  border-bottom: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.navbar .container {
+  width: 100%;
+  max-width: none; 
+  padding-right: 2rem;
+  padding-left: 2rem;
+}
+  
+#file-name {
+  display: block;
+  margin-top: .5rem;
+  font-style: italic;
+}
+
+.graph-placeholder,
+.emotion-circle {
+  background-color: #f8f9fa;
+  border: 1px dashed #000;
+  border-radius: 4px;
+}
+
+.section, .graph-view, .emotion-state {
+  background-color: white;
+  border: 1px solid #dee2e6; 
+  border-radius: .25rem; 
+  padding: 2rem; 
+  margin-bottom: 1rem; 
+  margin-left: 250px;
+}
+
+.graph-placeholder {
+  height: 200px; 
+}
+
+.emotion-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem auto;
+}
+
+.sidebar {
+  width: 20%; 
+  height: 100vh; 
+  background-color: #212529; 
+  color: #ffffff; 
+  padding: 20px;
+  overflow-x: hidden; 
+  position: fixed; 
+  left: 0; 
+  
+}
+
+.history-item {
+  background-color: #343a40; 
+  border: 1px solid #495057; 
+  padding: 10px;
+  margin-bottom: 10px; 
+  border-radius: 4px; 
+  transition: background-color 0.2s; 
+  cursor: pointer; 
+}
+
+.history-item:hover {
+  background-color: #495057; 
+}

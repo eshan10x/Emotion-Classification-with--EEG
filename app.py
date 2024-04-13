@@ -34,6 +34,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -66,26 +67,31 @@ def upload_file():
         keys = get_keynames(data.keys())
         X = data[keys[1]].squeeze()  # Assuming X is a 1D array, use squeeze to remove singleton dimensions
 
-        # Create Plotly trace
-        trace = {
-            'x': list(range(len(X))),
-            'y': X.tolist(),  # Convert numpy array to list for JSON serialization
-            'type': 'scatter'
-        }
+        sampling_rate = 200
+        window_size = 2
+        total_samples = sampling_rate * window_size
+        channel_id_to_plot = 0
+        channel_names = ['FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6', 'T8', 'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', 'CB1', 'O1', 'OZ', 'O2', 'CB2']
 
-        # Create Plotly layout
-        layout = {
-            'title': 'Uploaded EEG Signal Plot'
-        }
+        X = np.random.randn(1, 14, total_samples)
 
-        # Return Plotly data as JSON response
-        response_data = {
-            'trace': trace,
-            'layout': layout
-        }
+        # Extracting raw time series data from the dataset
+        raw_ts = X[0, channel_names.index(channels_to_use[channel_id_to_plot]), 0:total_samples]
 
-        return jsonify(response_data)
+        df = pd.DataFrame({
+            'Time': np.linspace(0, window_size, num=total_samples),  # Create a time axis in seconds
+            'Voltage': raw_ts  # EEG data values
+        })
 
+        # Create the plot with Plotly Express
+        fig = px.line(df, x='Time', y='Voltage', title='Comparison of an Exemplary Time Series',
+                    labels={'Time': 'Time t [s]', 'Voltage': 'Voltage U [mV]'},
+                    markers=True)
+
+        graph_json = fig.to_json()
+        return graph_json
+
+#Get latest file from uploaded files
 def get_latest_file(directory):
     #"Get latest file from saved location"
     files = [os.path.join(directory, f) for f in os.listdir(directory)]
@@ -100,6 +106,7 @@ def get_latest_file(directory):
     else:
         return None
 
+#Get key names when selecting one signal section
 def get_keynames(dict_keys):
         dict_keys = list(dict_keys)
         trial_names = list()
@@ -186,6 +193,7 @@ def classification():
 
         return combined_model
 
+    ####### Feature Extraction #######
     ##Calculates the energy of wavelet coefficients, either for an array of coefficients or single value.
     def compute_energy(coefficients):
         if isinstance(coefficients, np.ndarray):
@@ -388,7 +396,7 @@ def classification():
         return np.array(data_tensor)
 
 
-
+    ######### Pre Processing EEG Signal #########
     baseline_removal_window = 3
     cutoff_frequencies = [4,40]
     seconds_to_use = 185
@@ -397,11 +405,10 @@ def classification():
     window_size = 2
     window_overlap = 0
     save_plots_to_file = False
-
-
     sampling_rate = 200
     channel_names = ['FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6', 'T8', 'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', 'CB1', 'O1', 'OZ', 'O2', 'CB2']
 
+    #Applying Filters
     def butter_bandpass(lowcut, highcut, fs, btype='band', order=5):
             nyq = 0.5 * fs
             if btype == 'bandpass':
@@ -421,7 +428,7 @@ def classification():
             X = sosfilt(sos, X)
             return X
 
-
+    #Down Sampling
     def down_sample(data, downsampling_rate, sampling_rate):
         if not(downsampling_rate == 0) and not(downsampling_rate == sampling_rate):
             new_length = int(data.shape[1] / sampling_rate * downsampling_rate)
@@ -431,6 +438,7 @@ def classification():
                 data_downsampled[channel_id, :] = resample(data[channel_id, :], new_length)
             return data_downsampled
 
+    #Selet certain channels
     def select_channel(data, channels_to_use,channel_names):
         if channels_to_use == None:
             channels_to_use = channel_names
@@ -446,7 +454,7 @@ def classification():
             data_selected_channels[channel,:] = data[channel_index_list[channel],:]
         return data_selected_channels
 
-
+    #Cut into windows
     def cut_into_windows(data):
         window_size = 2
         window_overlap = 0

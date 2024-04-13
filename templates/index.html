@@ -82,11 +82,7 @@
         alert("File uploaded successfully!");
         const parsedData = JSON.parse(data)
         console.log((parsedData)); // Check the received data
-        const trace = parsedData.trace;
-        console.log(trace); // Check the trace object
-        const layout = parsedData.layout;
-        console.log("ss",layout); // Check the layout object
-        Plotly.newPlot('chart', [trace], layout);  // Error occurs here
+        Plotly.newPlot('chart', JSON.parse(data).data, JSON.parse(data).layout);
         document.getElementById("statusMessage").textContent = "EEG Signal Uploaded Successfully!";
         })
         .catch(error => {

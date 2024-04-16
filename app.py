@@ -40,10 +40,8 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 CORS(app)
 
-# Directory where uploaded files will be saved
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'npy'}
-# Ensure the upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 channels_to_use = ['AF3', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1', 'O2', 'P8', 'T8', 'FC6', 'F4', 'F8', 'AF4']
@@ -51,7 +49,7 @@ channels_to_use = ['AF3', 'F7', 'F3', 'FC5', 'T7', 'P7', 'O1', 'O2', 'P8', 'T8',
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return make_response('No file part', 400)  # Return a 400 Bad Request for error scenarios
+        return make_response('No file part', 400)
     
     file = request.files['file']
     if file.filename == '':
@@ -63,9 +61,8 @@ def upload_file():
         file.save(file_path)
         
         data = loadmat(get_latest_file('/Users/eshan/Documents/Uni/Year 4/FYP/EEG Implementation/Flask/uploads'))
-        # Extract the data you need, for example, 'X' variable
         keys = get_keynames(data.keys())
-        X = data[keys[1]].squeeze()  # Assuming X is a 1D array, use squeeze to remove singleton dimensions
+        X = data[keys[1]].squeeze()
 
         sampling_rate = 200
         window_size = 2
@@ -75,15 +72,13 @@ def upload_file():
 
         X = np.random.randn(1, 14, total_samples)
 
-        # Extracting raw time series data from the dataset
         raw_ts = X[0, channel_names.index(channels_to_use[channel_id_to_plot]), 0:total_samples]
 
         df = pd.DataFrame({
-            'Time': np.linspace(0, window_size, num=total_samples),  # Create a time axis in seconds
-            'Voltage': raw_ts  # EEG data values
+            'Time': np.linspace(0, window_size, num=total_samples),
+            'Voltage': raw_ts 
         })
 
-        # Create the plot with Plotly Express
         fig = px.line(df, x='Time', y='Voltage', title='Comparison of an Exemplary Time Series',
                     labels={'Time': 'Time t [s]', 'Voltage': 'Voltage U [mV]'},
                     markers=True)
@@ -91,22 +86,16 @@ def upload_file():
         graph_json = fig.to_json()
         return graph_json
 
-#Get latest file from uploaded files
 def get_latest_file(directory):
-    #"Get latest file from saved location"
     files = [os.path.join(directory, f) for f in os.listdir(directory)]
-    # Filter out directories, leaving only files
     files = [f for f in files if os.path.isfile(f)]
-    # Sort the files by modification time
     files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    # Return the first item in the list, which is the latest file
     if files:
         latest_file = files[0]
         return latest_file
     else:
         return None
 
-#Get key names when selecting one signal section
 def get_keynames(dict_keys):
         dict_keys = list(dict_keys)
         trial_names = list()
@@ -120,7 +109,6 @@ def get_keynames(dict_keys):
 
 def classification():
 
-    ######### LSTM Model #########
     def lstm_model(input_shape, clip_value=1.0):
         model = Sequential()
         model.add(Input(shape=input_shape))
@@ -134,67 +122,54 @@ def classification():
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         return model
 
-    ######### CNN Model #########
     def build_cnn_model(input_shape):
         model = Sequential([
             Input(shape=input_shape),
 
-            # First Convolutional Block
             Conv1D(filters=64, kernel_size=5, padding='same', activation='relu'),
             BatchNormalization(),
             MaxPooling1D(2),
             Dropout(0.5),
 
-            # Second Convolutional Block
             Conv1D(filters=128, kernel_size=3, padding='same', activation='relu'),
             BatchNormalization(),
             MaxPooling1D(2),
             Dropout(0.5),
 
-            # Third Convolutional Block (optional)
             Conv1D(filters=256, kernel_size=2, padding='same', activation='relu'),
             BatchNormalization(),
             MaxPooling1D(2),
             Dropout(0.5),
 
-            # Flattening and Final Dense Layers
             Flatten(),
             Dense(128, activation='relu'),
             Dropout(0.5),
-            Dense(3, activation='softmax')  # Assuming 3 classes
+            Dense(3, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         return model
 
 
-    ######### Combined Model #########
     def build_combined_model(cnn_model, lstm_model, input_shape_cnn, input_shape_lstm, n_classes):
-        # Define input layers for CNN and LSTM
         cnn_input = Input(shape=input_shape_cnn)
         lstm_input = Input(shape=input_shape_lstm)
 
-        # Use the CNN and LSTM models to process the inputs
         cnn_features = cnn_model(cnn_input)
         lstm_features = lstm_model(lstm_input)
 
-        # Combine the features from both models
         combined_features = concatenate([cnn_features, lstm_features])
 
-        # Add final layers for classification
         x = Dense(64, activation='relu')(combined_features)
         x = Dropout(0.5)(x)
         final_output = Dense(n_classes, activation='softmax')(x)
 
-        # Create the combined model
         combined_model = Model(inputs=[cnn_input, lstm_input], outputs=final_output)
 
-        # Compile the combined model
         combined_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
         return combined_model
 
-    ####### Feature Extraction #######
-    ##Calculates the energy of wavelet coefficients, either for an array of coefficients or single value.
+    #Feature extration
     def compute_energy(coefficients):
         if isinstance(coefficients, np.ndarray):
             return np.sum(np.square(np.abs(coefficients))) / len(coefficients)
@@ -291,26 +266,23 @@ def classification():
         return freq_band_power
 
     def compute_spectral_entropy(psd):
-        normalized_psd = psd / np.sum(psd)  # Normalize to obtain probabilities
+        normalized_psd = psd / np.sum(psd) 
         spectral_entropy = -np.sum(normalized_psd * np.log2(normalized_psd))
         return spectral_entropy
 
     def extract_frequency_domain_features(signal, sampling_frequency, nperseg=256):
-        # Apply Butterworth bandpass filters
         delta_band_signal = butter_bandpass_filter(signal, 0.5, 4, sampling_frequency)
         theta_band_signal = butter_bandpass_filter(signal, 4, 8, sampling_frequency)
         alpha_band_signal = butter_bandpass_filter(signal, 8, 13, sampling_frequency)
         beta_band_signal = butter_bandpass_filter(signal, 13, 30, sampling_frequency)
         gamma_band_signal = butter_bandpass_filter(signal, 30, 40, sampling_frequency)
 
-        # Compute Power Spectral Density for each band
         delta_psd = compute_power_spectral_density(delta_band_signal, sampling_frequency, nperseg=nperseg)
         theta_psd = compute_power_spectral_density(theta_band_signal, sampling_frequency, nperseg=nperseg)
         alpha_psd = compute_power_spectral_density(alpha_band_signal, sampling_frequency, nperseg=nperseg)
         beta_psd = compute_power_spectral_density(beta_band_signal, sampling_frequency, nperseg=nperseg)
         gamma_psd = compute_power_spectral_density(gamma_band_signal, sampling_frequency, nperseg=nperseg)
 
-        # Compute Band Power for each frequency band
         freq_band_indices = [range(int(nperseg * band[0] / sampling_frequency), int(nperseg * band[1] / sampling_frequency)) for band in [(0.5, 4), (4, 8), (8, 13), (13, 30), (30, 40)]]
 
         delta_band_power = compute_band_power(delta_psd, freq_band_indices[0], sampling_frequency, nperseg)
@@ -320,7 +292,6 @@ def classification():
         gamma_band_power = compute_band_power(gamma_psd, freq_band_indices[4], sampling_frequency, nperseg)
 
         spectral_entropy_result = compute_spectral_entropy(np.concatenate([delta_psd, theta_psd, alpha_psd, beta_psd, gamma_psd]))
-        # Compute the power spectral density (PSD)
         psd, _ = scipy.signal.welch(signal, fs=sampling_frequency, nperseg=nperseg)
 
         return [
@@ -365,7 +336,6 @@ def classification():
         else:
             return -1
     def extract_time_domain_features(raw_data,sampling_frequency, nperseg=256):
-        # data=butter_bandpass_filter(raw_data, 0.5, 40, sampling_frequency)
         data=raw_data
 
         features = [
@@ -396,7 +366,7 @@ def classification():
         return np.array(data_tensor)
 
 
-    ######### Pre Processing EEG Signal #########
+    #Pre Processing EEG Signal
     baseline_removal_window = 3
     cutoff_frequencies = [4,40]
     seconds_to_use = 185
@@ -408,7 +378,6 @@ def classification():
     sampling_rate = 200
     channel_names = ['FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6', 'T8', 'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', 'CB1', 'O1', 'OZ', 'O2', 'CB2']
 
-    #Applying Filters
     def butter_bandpass(lowcut, highcut, fs, btype='band', order=5):
             nyq = 0.5 * fs
             if btype == 'bandpass':
@@ -428,7 +397,6 @@ def classification():
             X = sosfilt(sos, X)
             return X
 
-    #Down Sampling
     def down_sample(data, downsampling_rate, sampling_rate):
         if not(downsampling_rate == 0) and not(downsampling_rate == sampling_rate):
             new_length = int(data.shape[1] / sampling_rate * downsampling_rate)
@@ -438,7 +406,6 @@ def classification():
                 data_downsampled[channel_id, :] = resample(data[channel_id, :], new_length)
             return data_downsampled
 
-    #Selet certain channels
     def select_channel(data, channels_to_use,channel_names):
         if channels_to_use == None:
             channels_to_use = channel_names
@@ -454,7 +421,6 @@ def classification():
             data_selected_channels[channel,:] = data[channel_index_list[channel],:]
         return data_selected_channels
 
-    #Cut into windows
     def cut_into_windows(data):
         window_size = 2
         window_overlap = 0

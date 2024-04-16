@@ -516,8 +516,6 @@ def classification():
     lstm_model = lstm_model(input_shape)
     cnn_model = build_cnn_model(input_shape)
 
-
-    # Load your pre-trained models here
     lstm_model.load_weights('/Users/eshan/Documents/Uni/Year 4/FYP/EEG Implementation/Flask/lstm_model_weights.h5')
     cnn_model.load_weights('/Users/eshan/Documents/Uni/Year 4/FYP/EEG Implementation/Flask/cnn_model_weights.h5')
 
@@ -535,7 +533,6 @@ def classification():
 
     print(f"Predicted Emotion: {predicted_emotion}")
 
-    # return predicted_emotion
     return make_response(f"{predicted_emotion}", 200)
 
 @app.route('/')

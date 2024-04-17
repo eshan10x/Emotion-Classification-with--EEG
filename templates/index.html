@@ -25,7 +25,6 @@
     <div class="sidebar">
       <h4>Upload History</h4>
       <div id="uploadHistory">
-          <!-- Dynamically populated history items will go here -->
       </div>
     </div>
     <div class="container my-5">
@@ -74,14 +73,14 @@
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');  // This will send the code to the .catch block
+                throw new Error('Network response was not ok');
             }
             return response.text();
         })
         .then(data => {
         alert("File uploaded successfully!");
         const parsedData = JSON.parse(data)
-        console.log((parsedData)); // Check the received data
+        console.log((parsedData));
         Plotly.newPlot('chart', JSON.parse(data).data, JSON.parse(data).layout);
         document.getElementById("statusMessage").textContent = "EEG Signal Uploaded Successfully!";
         })
@@ -110,7 +109,7 @@
             })
             .then(response => {
             if (!response.ok) {
-                throw new Error('Classification failed');  // This will send the code to the .catch block
+                throw new Error('Classification failed');
             }
             return response.text();
             })
